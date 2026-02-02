@@ -27,6 +27,8 @@ const upload = multer({
   })
 });
 
+import passport from "passport";
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -38,17 +40,7 @@ export async function registerRoutes(
   setupAuth(app);
 
   // === Auth Routes ===
-  // Login/Logout are handled in setupAuth or can be explicit here if using custom logic, 
-  // but usually Passport handles the login route via a middleware.
-  // However, `setupAuth` in our templates usually sets up the session but not the specific login route 
-  // if we want to use the API contract. Let's verify `setupAuth` implementation later. 
-  // For now, I'll assume standard Passport setup and add the routes here to match `shared/routes.ts`.
-
-  // Note: setupAuth usually adds the /login route. 
-  // If we want to use our API contract strictly:
   app.post(api.auth.login.path, (req, res, next) => {
-    // Delegate to passport
-    const passport = require('passport'); // Import dynamically or from auth.ts
     passport.authenticate('local', (err: any, user: any, info: any) => {
       if (err) return next(err);
       if (!user) return res.status(401).json({ message: "Invalid credentials" });
