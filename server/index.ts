@@ -85,6 +85,8 @@ app.use((req, res, next) => {
       // Fallback to schema synchronization
       await db.execute(sql`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT NOT NULL UNIQUE, password TEXT NOT NULL)`);
       await db.execute(sql`CREATE TABLE IF NOT EXISTS uploads (id SERIAL PRIMARY KEY, public_text TEXT NOT NULL, private_text TEXT, folder_name TEXT DEFAULT 'General', drive_file_id TEXT NOT NULL, web_view_link TEXT NOT NULL, thumbnail_link TEXT, created_at TIMESTAMP DEFAULT NOW())`);
+      // Create sessions table for connect-pg-simple
+      await db.execute(sql`CREATE TABLE IF NOT EXISTS "session" ("sid" varchar NOT NULL COLLATE "default", "sess" json NOT NULL, "expire" timestamp(6) NOT NULL, PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE) WITH (OIDS=FALSE)`);
       log("Database schema synchronized.");
     }
   } catch (error: any) {
