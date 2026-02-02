@@ -1,5 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
-import cors from 'cors';
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -23,43 +23,13 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-// CORS configuration for Vercel + Railway deployment
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'http://localhost:5174', // Additional common Vite port
-  'https://*.vercel.app', // Allow all Vercel subdomains
-];
-
-// Add the actual deployed frontend URL if available
-if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
-}
-
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    
-    // Check if the origin is in the allowed list
-    const isAllowed = allowedOrigins.some(allowedOrigin => {
-      if (allowedOrigin.includes('*')) {
-        // Handle wildcard domains like 'https://*.vercel.app'
-        const wildcardPattern = allowedOrigin.replace('*', '(.*)');
-        const regex = new RegExp(`^${wildcardPattern}$`);
-        return regex.test(origin);
-      }
-      return origin === allowedOrigin;
-    });
-    
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-}));
+/* ✅ SIMPLE WORKING CORS (fixes white screen issue) */
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -75,7 +45,7 @@ export function log(message: string, source = "express") {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  let capturedJsonResponse: Record<string, any> | undefined;
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
@@ -90,7 +60,6 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       log(logLine);
     }
   });
@@ -114,9 +83,6 @@ app.use((req, res, next) => {
     return res.status(status).json({ message });
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -124,11 +90,9 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
+  /* ✅ Railway-compatible server start */
   const port = parseInt(process.env.PORT || "5000", 10);
+
   httpServer.listen(
     {
       port,
@@ -137,6 +101,6 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
-    },
+    }
   );
 })();
