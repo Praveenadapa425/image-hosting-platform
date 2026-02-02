@@ -21,7 +21,7 @@ export function Navigation() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <LayoutGrid className="h-5 w-5" />
           </div>
-          <span className="text-xl font-bold tracking-tight font-display">Gallery</span>
+          <span className="text-xl font-bold tracking-tight font-display">Srinivas</span>
         </Link>
 
         {/* Desktop Nav */}

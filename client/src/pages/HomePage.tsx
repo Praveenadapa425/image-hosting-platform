@@ -35,7 +35,7 @@ export default function HomePage() {
       
       <footer className="border-t border-border/50 py-8 mt-auto">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Gallery App. All rights reserved.
+          © {new Date().getFullYear()} Srinivas. All rights reserved.
         </div>
       </footer>
     </div>
