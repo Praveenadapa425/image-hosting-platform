@@ -73,6 +73,26 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Synchronize the database schema on startup
+  log("Synchronizing database schema...");
+  try {
+    // Attempt to run migrations if migration files exist
+    try {
+      await migrate(db, { migrationsFolder: "./migrations" });
+      log("Database migrations applied.");
+    } catch (migrationError: any) {
+      log(`Migrations not found or failed: ${migrationError?.message || migrationError}. Attempting schema sync...`);
+      // Fallback to schema synchronization
+      await db.execute(sql`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT NOT NULL UNIQUE, password TEXT NOT NULL)`);
+      await db.execute(sql`CREATE TABLE IF NOT EXISTS uploads (id SERIAL PRIMARY KEY, public_text TEXT NOT NULL, private_text TEXT, folder_name TEXT DEFAULT 'General', drive_file_id TEXT NOT NULL, web_view_link TEXT NOT NULL, thumbnail_link TEXT, created_at TIMESTAMP DEFAULT NOW())`);
+      log("Database schema synchronized.");
+    }
+  } catch (error: any) {
+    log(`Database setup error: ${error?.message || error}`);
+    throw error;
+  }
+  
+  // Register routes after database is ready
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
@@ -98,25 +118,6 @@ app.use((req, res, next) => {
   /* ✅ Railway-compatible server start */
   const port = parseInt(process.env.PORT || "5000", 10);
 
-  // Synchronize the database schema on startup
-  log("Synchronizing database schema...");
-  try {
-    // Attempt to run migrations if migration files exist
-    try {
-      await migrate(db, { migrationsFolder: "./migrations" });
-      log("Database migrations applied.");
-    } catch (migrationError: any) {
-      log(`Migrations not found or failed: ${migrationError?.message || migrationError}. Attempting schema sync...`);
-      // Fallback to schema synchronization
-      await db.execute(sql`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT NOT NULL UNIQUE, password TEXT NOT NULL)`);
-      await db.execute(sql`CREATE TABLE IF NOT EXISTS uploads (id SERIAL PRIMARY KEY, public_text TEXT NOT NULL, private_text TEXT, folder_name TEXT DEFAULT 'General', drive_file_id TEXT NOT NULL, web_view_link TEXT NOT NULL, thumbnail_link TEXT, created_at TIMESTAMP DEFAULT NOW())`);
-      log("Database schema synchronized.");
-    }
-  } catch (error: any) {
-    log(`Database setup error: ${error?.message || error}`);
-    throw error;
-  }
-  
   httpServer.listen(
     {
       port,
