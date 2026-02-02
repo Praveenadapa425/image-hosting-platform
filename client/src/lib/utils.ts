@@ -7,14 +7,17 @@ export function cn(...inputs: ClassValue[]) {
 
 // Base API URL - can be configured for different environments
 export const API_BASE_URL = typeof window !== 'undefined' 
-  ? process.env.VITE_API_URL || window.location.origin
-  : process.env.API_URL || 'http://localhost:5000';
+  ? (process.env.VITE_API_URL || window.location.origin).replace(/(^['"]|['"]$)/g, '') // Remove leading/trailing quotes if present
+  : (process.env.API_URL || 'http://localhost:5000').replace(/(^['"]|['"]$)/g, ''); // Remove leading/trailing quotes if present
 
 // Function to build API URLs
 export function buildApiUrl(path: string): string {
-  // Ensure API_BASE_URL doesn't end with a slash and path starts with a slash
-  const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  // Clean the base URL by removing leading/trailing quotes and slashes
+  let cleanBaseUrl = API_BASE_URL.replace(/(^['"]|['"]$)/g, '');
+  cleanBaseUrl = cleanBaseUrl.endsWith('/') ? cleanBaseUrl.slice(0, -1) : cleanBaseUrl;
   
-  return `${baseUrl}${normalizedPath}`;
+  // Clean the path by ensuring it starts with a slash
+  let cleanPath = path.startsWith('/') ? path : `/${path}`;
+  
+  return `${cleanBaseUrl}${cleanPath}`;
 }
