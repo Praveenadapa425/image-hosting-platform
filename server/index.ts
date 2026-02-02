@@ -3,6 +3,11 @@ import cors from "cors";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { sql } from "drizzle-orm";
+import { db } from "./db";
+import * as schema from "@shared/schema";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
 
 const app = express();
 const httpServer = createServer(app);
@@ -93,6 +98,25 @@ app.use((req, res, next) => {
   /* ✅ Railway-compatible server start */
   const port = parseInt(process.env.PORT || "5000", 10);
 
+  // Synchronize the database schema on startup
+  log("Synchronizing database schema...");
+  try {
+    // Attempt to run migrations if migration files exist
+    try {
+      await migrate(db, { migrationsFolder: "./migrations" });
+      log("Database migrations applied.");
+    } catch (migrationError: any) {
+      log(`Migrations not found or failed: ${migrationError?.message || migrationError}. Attempting schema sync...`);
+      // Fallback to schema synchronization
+      await db.execute(sql`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT NOT NULL UNIQUE, password TEXT NOT NULL)`);
+      await db.execute(sql`CREATE TABLE IF NOT EXISTS uploads (id SERIAL PRIMARY KEY, public_text TEXT NOT NULL, private_text TEXT, folder_name TEXT DEFAULT 'General', drive_file_id TEXT NOT NULL, web_view_link TEXT NOT NULL, thumbnail_link TEXT, created_at TIMESTAMP DEFAULT NOW())`);
+      log("Database schema synchronized.");
+    }
+  } catch (error: any) {
+    log(`Database setup error: ${error?.message || error}`);
+    throw error;
+  }
+  
   httpServer.listen(
     {
       port,
