@@ -11,7 +11,7 @@
           "cmds": ["npm run build:server"]
         },
         "start": {
-          "cmd": "npm run start"
+          "cmd": "node dist/index.cjs"
         }
       },
       "variables": {

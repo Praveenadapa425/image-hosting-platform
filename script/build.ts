@@ -63,8 +63,6 @@ async function buildAll() {
 
 // Separate function to build only the server for Railway deployment
 async function buildServerOnly() {
-  await rm("dist-server", { recursive: true, force: true });
-
   console.log("building server only for Railway...");
   const pkg = JSON.parse(await readFile("package.json", "utf-8"));
   const allDeps = [
@@ -78,7 +76,7 @@ async function buildServerOnly() {
     platform: "node",
     bundle: true,
     format: "cjs",
-    outfile: "dist-server/index.cjs",
+    outfile: "dist/index.cjs",
     define: {
       "process.env.NODE_ENV": '"production"',
     },
