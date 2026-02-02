@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, buildUrl, type InsertUpload } from "@shared/routes";
+import { api, buildUrl } from "@shared/routes";
+import { type InsertUpload } from "@shared/schema";
+import { buildApiUrl } from "../lib/utils";
 
 // --- PUBLIC HOOKS ---
 
@@ -7,7 +9,7 @@ export function usePublicUploads() {
   return useQuery({
     queryKey: [api.uploads.listPublic.path],
     queryFn: async () => {
-      const res = await fetch(api.uploads.listPublic.path);
+      const res = await fetch(buildApiUrl(api.uploads.listPublic.path));
       if (!res.ok) throw new Error("Failed to fetch public uploads");
       return api.uploads.listPublic.responses[200].parse(await res.json());
     },
@@ -24,7 +26,7 @@ export function useAdminUploads(folder?: string) {
         ? `${api.uploads.listAll.path}?folder=${encodeURIComponent(folder)}`
         : api.uploads.listAll.path;
         
-      const res = await fetch(url, { credentials: "include" });
+      const res = await fetch(buildApiUrl(url), { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch uploads");
       return api.uploads.listAll.responses[200].parse(await res.json());
     },
@@ -37,7 +39,7 @@ export function useUpload() {
   // Create - Accepts FormData directly
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const res = await fetch(api.uploads.create.path, {
+      const res = await fetch(buildApiUrl(api.uploads.create.path), {
         method: api.uploads.create.method,
         body: formData, // Browser sets Content-Type to multipart/form-data automatically
         credentials: "include",
@@ -61,7 +63,7 @@ export function useUpload() {
       const url = buildUrl(api.uploads.update.path, { id });
       const validated = api.uploads.update.input.parse(updates);
       
-      const res = await fetch(url, {
+      const res = await fetch(buildApiUrl(url), {
         method: api.uploads.update.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(validated),
@@ -81,7 +83,7 @@ export function useUpload() {
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const url = buildUrl(api.uploads.delete.path, { id });
-      const res = await fetch(url, { 
+      const res = await fetch(buildApiUrl(url), { 
         method: api.uploads.delete.method,
         credentials: "include" 
       });

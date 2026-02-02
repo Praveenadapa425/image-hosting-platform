@@ -37,4 +37,9 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
+  define: {
+    // Expose and wrap environment variables
+    'process.env': process.env,
+  },
+  envPrefix: ['VITE_', 'VERCEL_', 'REACT_APP_'], // Allow Vercel and Vite environment variables
 });

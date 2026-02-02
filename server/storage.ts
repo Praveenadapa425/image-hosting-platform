@@ -6,6 +6,8 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 
+import cloudinary from './cloudinary';
+
 const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
@@ -54,9 +56,50 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUpload(insertUpload: InsertUpload): Promise<Upload> {
+  async createUpload(insertUpload: Omit<InsertUpload, 'driveFileId' | 'webViewLink' | 'thumbnailLink'> & { driveFileId: string; webViewLink: string; thumbnailLink: string }): Promise<Upload> {
     const [upload] = await db.insert(uploads).values(insertUpload).returning();
     return upload;
+  }
+
+  async uploadToCloudinary(fileBuffer: Buffer, folder: string) {
+    try {
+      // Convert buffer to temporary file or use data URL for upload
+      const result = await new Promise<any>((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: folder,
+            use_filename: true,
+            unique_filename: true,
+          },
+          (error, result) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve(result);
+            }
+          }
+        );
+        stream.end(fileBuffer);
+      });
+      
+      return {
+        publicId: result.public_id,
+        secureUrl: result.secure_url,
+        thumbnailUrl: result.thumbnail_url || result.secure_url,
+      };
+    } catch (error) {
+      console.error('Cloudinary upload error:', error);
+      throw error;
+    }
+  }
+
+  async deleteFromCloudinary(publicId: string) {
+    try {
+      await cloudinary.uploader.destroy(publicId);
+    } catch (error) {
+      console.error('Cloudinary deletion error:', error);
+      throw error;
+    }
   }
 
   async getUpload(id: number): Promise<Upload | undefined> {

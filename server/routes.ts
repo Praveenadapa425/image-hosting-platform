@@ -5,27 +5,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
 import express from "express";
-
-// Configure local storage for uploads (fallback since Drive integration was dismissed)
-// In a real production environment with ephemeral file systems, this should be S3 or similar.
-// For this environment, we'll store in a 'uploads' directory.
-const uploadDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
-
-const upload = multer({ 
-  storage: multer.diskStorage({
-    destination: uploadDir,
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
-  })
-});
 
 import passport from "passport";
 
@@ -33,8 +13,10 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Serve uploaded files statically
-  app.use('/uploads', express.static(uploadDir));
+  // Use memory storage for multer to handle file uploads to Cloudinary
+  const upload = multer({ storage: multer.memoryStorage() });
+
+  // Note: Static file serving is not needed since we're using Cloudinary for image storage
 
   // Setup Authentication
   setupAuth(app);
@@ -67,7 +49,7 @@ export async function registerRoutes(
       if (!req.isAuthenticated()) return res.sendStatus(401);
       try {
           const { currentPassword, newPassword } = api.auth.changePassword.input.parse(req.body);
-          const user = await storage.getUser(req.user!.id);
+          const user = await storage.getUser((req.user as any).id);
           // Simple string comparison as per requirements (initially plain text '0777'), 
           // but we should ideally use hashing. 
           // Given the initial seed is '0777', we'll implement simple check first or 
@@ -114,8 +96,8 @@ export async function registerRoutes(
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      // Generate a link. Since we are using local storage:
-      const fileUrl = `/uploads/${req.file.filename}`;
+      // Upload to Cloudinary
+      const uploadResult = await storage.uploadToCloudinary(req.file.buffer, 'drive-content-hub/' + (req.body.folderName || 'General'));
       
       // Parse body fields
       const publicText = req.body.publicText || "";
@@ -126,9 +108,9 @@ export async function registerRoutes(
         publicText,
         privateText,
         folderName,
-        driveFileId: "local-" + req.file.filename, // Placeholder ID
-        webViewLink: fileUrl,
-        thumbnailLink: fileUrl, // Same for now
+        driveFileId: uploadResult.publicId, // Cloudinary public ID
+        webViewLink: uploadResult.secureUrl,
+        thumbnailLink: uploadResult.thumbnailUrl,
       });
 
       res.status(201).json(newUpload);
@@ -158,11 +140,34 @@ export async function registerRoutes(
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const id = Number(req.params.id);
+      // First get the upload to retrieve the Cloudinary public ID
+      const uploadToDelete = await storage.getUpload(id);
+      if (!uploadToDelete) {
+        return res.status(404).json({ message: "Upload not found" });
+      }
+      
+      // Delete from Cloudinary
+      await storage.deleteFromCloudinary(uploadToDelete.driveFileId);
+      
+      // Delete from database
       await storage.deleteUpload(id);
-      // Optional: Delete file from disk
+      
       res.sendStatus(204);
     } catch (err) {
       res.status(404).json({ message: "Upload not found" });
+    }
+  });
+
+  // Test Cloudinary connection endpoint
+  app.get('/api/test-cloudinary', async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      // Try to ping Cloudinary
+      const pingResult = await import('./cloudinary').then(mod => mod.default.api.ping());
+      res.json({ success: true, message: 'Cloudinary connection successful', pingResult });
+    } catch (error) {
+      console.error('Cloudinary test error:', error);
+      res.status(500).json({ success: false, message: 'Cloudinary connection failed', error: (error as Error).message });
     }
   });
 

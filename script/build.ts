@@ -61,6 +61,56 @@ async function buildAll() {
   });
 }
 
+// Separate function to build only the server for Railway deployment
+async function buildServerOnly() {
+  await rm("dist-server", { recursive: true, force: true });
+
+  console.log("building server only for Railway...");
+  const pkg = JSON.parse(await readFile("package.json", "utf-8"));
+  const allDeps = [
+    ...Object.keys(pkg.dependencies || {}),
+    ...Object.keys(pkg.devDependencies || {}),
+  ];
+  const externals = allDeps.filter((dep) => !allowlist.includes(dep));
+
+  await esbuild({
+    entryPoints: ["server/index.ts"],
+    platform: "node",
+    bundle: true,
+    format: "cjs",
+    outfile: "dist-server/index.cjs",
+    define: {
+      "process.env.NODE_ENV": '"production"',
+    },
+    minify: true,
+    external: externals,
+    logLevel: "info",
+  });
+}
+
+// Build client only for Vercel deployment
+async function buildClientOnly() {
+  await rm("dist-client", { recursive: true, force: true });
+
+  console.log("building client only for Vercel...");
+  await viteBuild({
+    build: {
+      outDir: "dist-client",
+    },
+  });
+}
+
+// Check command line arguments to determine which build to run
+const buildType = process.argv[2];
+
+if (buildType === "--server") {
+  await buildServerOnly();
+} else if (buildType === "--client") {
+  await buildClientOnly();
+} else {
+  await buildAll();
+}
+
 buildAll().catch((err) => {
   console.error(err);
   process.exit(1);
