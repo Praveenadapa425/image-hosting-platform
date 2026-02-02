@@ -12,8 +12,9 @@ export const API_BASE_URL = typeof window !== 'undefined'
 
 // Function to build API URLs
 export function buildApiUrl(path: string): string {
-  if (path.startsWith('/')) {
-    return `${API_BASE_URL}${path}`;
-  }
-  return path;
+  // Ensure API_BASE_URL doesn't end with a slash and path starts with a slash
+  const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  
+  return `${baseUrl}${normalizedPath}`;
 }
