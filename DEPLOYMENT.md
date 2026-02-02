@@ -23,38 +23,10 @@ This guide explains how to deploy the Drive Content Hub monorepo application usi
 2. Create a new project and import your GitHub repository
 3. The project is configured to automatically redirect API requests to your Railway backend using the rewrite rules in `vercel.json`. No additional environment variables are needed in Vercel.
 
-4. The project includes a `vercel.json` file in the root that handles API rewrites to your Railway backend. Before deploying, update the `vercel.json` file with your actual Railway backend URL:
-   ```json
-   {
-     "version": 2,
-     "builds": [
-       {
-         "src": "client/package.json",
-         "use": "@vercel/static-build",
-         "config": {
-           "distDir": "dist-client"
-         }
-       }
-     ],
-     "routes": [
-       {
-         "src": "/api/(.*)",
-         "dest": "https://your-railway-backend-url-production.up.railway.app/api/$1"
-       }
-     ],
-     "headers": [
-       {
-         "source": "/(.*)",
-         "headers": [
-           {
-             "key": "Access-Control-Allow-Origin",
-             "value": "*"
-           }
-         ]
-       }
-     ]
-   }
-   ```
+4. The project includes a `vercel.json` file in the root that configures the build process. After deploying to Railway and getting your backend URL:
+
+5. In your Vercel project settings, add the following environment variable:
+   - `VITE_API_URL` - Set this to your Railway backend URL (e.g., `https://your-project-production.up.railway.app`)
 
 ## CORS Configuration
 
